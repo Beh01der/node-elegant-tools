@@ -5,13 +5,16 @@
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "type": "module",
+  "repository": {
+    "url": "https://github.com/Beh01der/node-elegant-tools.git"
+  },
   "scripts": {
     "build": "node build.js",
     "test": "LOG_LEVEL=${LOG_LEVEL:=off} jest",
     "test-dev": "LOG_LEVEL=${LOG_LEVEL:=off} jest --watch",
     "bump": "npm version patch && git push --tags && git push --all",
-    "release": "npm i && npm run bundle && npm run cleanup",
-    "format": "dprint fmt ./src/**/*"
+    "format": "dprint fmt ./src/**/*",
+    "prepare": "npm run bump && npm run build"
   },
   "keywords": [
     "aws",
