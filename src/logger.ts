@@ -1,3 +1,4 @@
+import stringifySafe from "json-stringify-safe";
 import { AnyObject, onlyDefinedFields } from "./misc";
 
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal" | "off";
@@ -28,7 +29,7 @@ export class SimpleLogger {
 
   public log(level: LogLevel, message: string, data: AnyObject) {
     if (this.isLogLevelEnabled(level)) {
-      console.log(JSON.stringify(this.createEntry(level, message, data), null, 2));
+      console.log(stringifySafe(this.createEntry(level, message, data), null, 2));
     }
   }
 
@@ -82,7 +83,7 @@ export class ContextAwareLogger extends SimpleLogger {
   public flush() {
     for (let key of this.keys) {
       const entry = this.entries.get(key);
-      console.log(JSON.stringify({ pos: key.id, ...entry, ...this.context }, null, 2));
+      console.log(stringifySafe({ pos: key.id, ...entry, ...this.context }, null, 2));
     }
   }
 }
