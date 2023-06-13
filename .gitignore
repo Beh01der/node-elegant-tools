@@ -1,0 +1,9 @@
+dist
+node_modules
+*.zip
+coverage
+output
+*.log
+.env
+package-lock.json
+local
