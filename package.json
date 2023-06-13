@@ -14,7 +14,7 @@
     "test-dev": "LOG_LEVEL=${LOG_LEVEL:=off} jest --watch",
     "bump": "npm version patch && git push --tags && git push --all",
     "format": "dprint fmt ./src/**/*",
-    "prepare": "npm run bump && npm run build"
+    "prepare": "npm run build"
   },
   "keywords": [
     "aws",
