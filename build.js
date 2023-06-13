@@ -1,12 +1,12 @@
-import { build } from "esbuild";
-import dts from "npm-dts";
+const esbuild = require("esbuild");
+const dts = require("npm-dts");
 
 new dts.Generator({
   entry: "src/index.ts",
   output: "dist/index.d.ts",
 }).generate();
 
-build({
+esbuild.build({
   entryPoints: ["src/index.ts"],
   outfile: "dist/index.js",
   platform: "node",

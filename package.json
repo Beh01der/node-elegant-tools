@@ -4,7 +4,6 @@
   "description": "",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
-  "type": "module",
   "repository": {
     "url": "https://github.com/Beh01der/node-elegant-tools.git"
   },

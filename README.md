@@ -1,6 +1,7 @@
 A simple toolset for Node.js / TypeScript AWS lambda development
 
 ** Context-aware logging
+It will follow async calls and add values added to context to every log entry
 
 ```typescript
 import { EventBridgeEvent } from "aws-lambda";
