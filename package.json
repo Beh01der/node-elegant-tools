@@ -11,9 +11,9 @@
     "build": "node build.js",
     "test": "LOG_LEVEL=${LOG_LEVEL:=off} jest",
     "test-dev": "LOG_LEVEL=${LOG_LEVEL:=off} jest --watch",
-    "bump": "npm version patch && git push --tags && git push --all",
+    "bump": "npm test && npm version patch && git push --tags && git push --all",
     "format": "dprint fmt ./src/**/*",
-    "prepare": "npm run build"
+    "prepare": "npm test && npm run build"
   },
   "keywords": [
     "aws",
