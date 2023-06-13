@@ -3,7 +3,7 @@ import { readJsonFile } from "./misc";
 
 const { name, version } = readJsonFile("package.json") || {};
 
-export const createHandler = (handler: (event?: any, context?: any) => any) => async (event: any, context: any) =>
+export const createHandler = (handler: (event?: any, context?: any) => any) => async (event?: any, context?: any) =>
   withContext(async () => {
     const { logger } = getContext();
 
