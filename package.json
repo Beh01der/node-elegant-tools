@@ -1,6 +1,6 @@
 {
   "name": "elegant-tools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -13,7 +13,13 @@
     "release": "npm i && npm run bundle && npm run cleanup",
     "format": "dprint fmt ./src/**/*"
   },
-  "keywords": ["aws", "lambda", "tools", "logging", "context"],
+  "keywords": [
+    "aws",
+    "lambda",
+    "tools",
+    "logging",
+    "context"
+  ],
   "author": "Andrey Chausenko",
   "license": "ISC",
   "devDependencies": {
@@ -28,6 +34,8 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "collectCoverageFrom": ["src/**/*.ts"]
+    "collectCoverageFrom": [
+      "src/**/*.ts"
+    ]
   }
 }
