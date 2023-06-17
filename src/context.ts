@@ -13,10 +13,7 @@ export const withContext = async <T>(wrapped: () => T) => {
   try {
     return await asyncLocalStorage.run(context, wrapped);
   } catch (error: any) {
-    context.logger.error("Unexpected error", { error: error.toString() || error.message || error });
-    if (error.stack) {
-      context.logger.error("stack", { stack: error.stack });
-    }
+    context.logger.error("Unexpected error", error);
     throw error;
   } finally {
     context.logger.flush();

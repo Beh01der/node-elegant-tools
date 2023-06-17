@@ -20,8 +20,8 @@ export const createHandler =
 
         logger.info("Successfully processed event", { result });
         return result;
-      } catch (error) {
-        logger.error("Failed to process event", { error });
+      } catch (error: any) {
+        logger.error("Failed to process event", error);
         throw error;
       }
     });

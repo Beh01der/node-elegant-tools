@@ -7,4 +7,12 @@ describe("lambda", () => {
 
     expect(result).toEqual("event+context");
   });
+
+  it("should handle / log error", async () => {
+    const handler = createHandler(async () => {
+      throw new Error("Oh no!");
+    });
+
+    expect(handler("event", "context")).rejects.toThrow("Oh no!");
+  });
 });

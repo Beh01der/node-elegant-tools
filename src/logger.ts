@@ -50,7 +50,9 @@ export class SimpleLogger {
   }
 
   public error(message: string, data: AnyObject = {}) {
-    this.log("error", message, data);
+    const error = data.error || data || {};
+    const preparedError = { raw: error.toString?.(), message: error.message, stack: error.stack };
+    this.log("error", message, { ...data, error: preparedError });
   }
 
   public fatal(message: string, data: AnyObject = {}) {
