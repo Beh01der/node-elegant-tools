@@ -1,5 +1,6 @@
 import stringifySafe from "json-stringify-safe";
 import { MemSavvyQueue } from "memory-savvy-queue";
+import os from "node:os";
 import { AnyObject, onlyDefinedFields } from "./misc";
 
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal" | "off";
@@ -15,14 +16,15 @@ export class SimpleLogger {
   private time = Date.now();
   private entryCounter = 0;
 
-  constructor(private logLevel: LogLevel = getDefaultLogLevel()) {}
+  constructor(protected logLevel: LogLevel = getDefaultLogLevel()) {}
 
   protected createEntry(level: LogLevel, message: string, data: AnyObject) {
     const time = Date.now();
     const timer = time - this.time;
     this.time = time;
+    const heapUsed = `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`;
 
-    return { id: this.entryCounter++, level, time, timer, message, ...data };
+    return { id: this.entryCounter++, level, time, timer, heapUsed, message, ...data };
   }
 
   public isLogLevelEnabled(level: LogLevel) {
@@ -31,7 +33,7 @@ export class SimpleLogger {
 
   public log(level: LogLevel, message: string, data: AnyObject) {
     if (this.isLogLevelEnabled(level)) {
-      console.log(stringifySafe(this.createEntry(level, message, data), null, 2));
+      process.stdout.write(stringifySafe(this.createEntry(level, message, data), null, 2) + os.EOL);
     }
   }
 
@@ -62,15 +64,38 @@ export class SimpleLogger {
   }
 }
 
-export class ContextAwareLogger extends SimpleLogger {
-  private entries = new MemSavvyQueue<{ id: number }>({
-    memoryUsageLimitBytes: (process.env.LOG_MEMORY_LIMIT ? parseInt(process.env.LOG_MEMORY_LIMIT) : 1) * 1024 * 1024,
-    itemConsumer: async (item) => {
-      console.log(stringifySafe({ ...item, ...this.context }, null, 2));
-    },
-  });
+export type ContextAwareLoggerConfig = {
+  logLevel?: LogLevel;
+  memoryLimit?: number;
+  flushTimeout?: number;
+};
 
+export class ContextAwareLogger extends SimpleLogger {
+  private entries: MemSavvyQueue<{ id: number }>;
+  private config: Required<ContextAwareLoggerConfig>;
   private context: AnyObject = {};
+
+  constructor(config?: ContextAwareLoggerConfig) {
+    super(config?.logLevel);
+
+    this.config = {
+      logLevel: this.logLevel,
+      memoryLimit: parseInt(process.env.LOG_MEMORY_LIMIT_MB || "1"),
+      flushTimeout: parseInt(process.env.LOG_FLUSH_TIMEOUT_S || "0"),
+      ...config,
+    };
+
+    this.entries = new MemSavvyQueue<{ id: number }>({
+      memoryUsageLimitBytes: this.config.memoryLimit * 1024 * 1024,
+      itemConsumer: async (item) => {
+        process.stdout.write(stringifySafe({ ...item, ...this.context }, null, 2) + os.EOL);
+      },
+    });
+
+    if (this.config.flushTimeout > 0) {
+      setTimeout(() => this.flush(), this.config.flushTimeout * 1000);
+    }
+  }
 
   public log(level: LogLevel, message: string, data: AnyObject) {
     if (this.isLogLevelEnabled(level)) {

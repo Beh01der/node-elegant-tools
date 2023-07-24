@@ -8,7 +8,7 @@ export const createHandler =
     withContext(async () => {
       const { logger } = getContext();
 
-      logger.info(`Running ${name || "unknown"} (${version || "unknown"}) for`, { event, context });
+      logger.info(`Running ${name || "unknown"} (${version || "unknown"})`, { event, context });
 
       logger.setContext({
         service: name,
