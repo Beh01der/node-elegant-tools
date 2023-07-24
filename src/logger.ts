@@ -1,4 +1,5 @@
 import stringifySafe from "json-stringify-safe";
+import { MemSavvyQueue } from "memory-savvy-queue";
 import { AnyObject, onlyDefinedFields } from "./misc";
 
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal" | "off";
@@ -12,6 +13,7 @@ const getDefaultLogLevel = () => {
 
 export class SimpleLogger {
   private time = Date.now();
+  private entryCounter = 0;
 
   constructor(private logLevel: LogLevel = getDefaultLogLevel()) {}
 
@@ -20,7 +22,7 @@ export class SimpleLogger {
     const timer = time - this.time;
     this.time = time;
 
-    return { level, time, timer, message, ...data };
+    return { id: this.entryCounter++, level, time, timer, message, ...data };
   }
 
   public isLogLevelEnabled(level: LogLevel) {
@@ -61,16 +63,18 @@ export class SimpleLogger {
 }
 
 export class ContextAwareLogger extends SimpleLogger {
-  private entries = new WeakMap<{ id: number }, any>();
-  private keys = new Array<{ id: number }>();
-  private entryCounter = 0;
+  private entries = new MemSavvyQueue<{ id: number }>({
+    memoryUsageLimitBytes: (process.env.LOG_MEMORY_LIMIT ? parseInt(process.env.LOG_MEMORY_LIMIT) : 1) * 1024 * 1024,
+    itemConsumer: async (item) => {
+      console.log(stringifySafe({ ...item, ...this.context }, null, 2));
+    },
+  });
+
   private context: AnyObject = {};
 
   public log(level: LogLevel, message: string, data: AnyObject) {
     if (this.isLogLevelEnabled(level)) {
-      const key = { id: this.entryCounter++ };
-      this.keys.push(key);
-      this.entries.set(key, this.createEntry(level, message, data));
+      this.entries.push(this.createEntry(level, message, data));
     }
   }
 
@@ -83,9 +87,6 @@ export class ContextAwareLogger extends SimpleLogger {
   }
 
   public flush() {
-    for (let key of this.keys) {
-      const entry = this.entries.get(key);
-      console.log(stringifySafe({ pos: key.id, ...entry, ...this.context }, null, 2));
-    }
+    this.entries.consumeAll();
   }
 }
