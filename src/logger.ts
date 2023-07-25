@@ -31,8 +31,9 @@ export class SimpleLogger {
     const timer = time - this.time;
     this.time = time;
     const heapUsed = `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`;
+    const memoryAllocated = `${Math.round(process.memoryUsage().rss / 1024 / 1024 * 100) / 100} MB`;
 
-    return { id: this.entryCounter++, level, time, timer, heapUsed, message, ...data };
+    return { id: this.entryCounter++, level, time, timer, heapUsed, memoryAllocated, message, ...data };
   }
 
   public isLogLevelEnabled(level: LogLevel) {
