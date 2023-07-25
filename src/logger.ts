@@ -12,11 +12,19 @@ const getDefaultLogLevel = () => {
   return logLevels.find((it) => it === logLevelString) || "info";
 };
 
+export type SimpleLoggerConfig = {
+  logLevel?: LogLevel;
+  jsonIndent?: number;
+};
+
 export class SimpleLogger {
   private time = Date.now();
   private entryCounter = 0;
+  protected config: Required<SimpleLoggerConfig>;
 
-  constructor(protected logLevel: LogLevel = getDefaultLogLevel()) {}
+  constructor(config?: SimpleLoggerConfig) {
+    this.config = { logLevel: getDefaultLogLevel(), jsonIndent: 0, ...config };
+  }
 
   protected createEntry(level: LogLevel, message: string, data: AnyObject) {
     const time = Date.now();
@@ -28,12 +36,14 @@ export class SimpleLogger {
   }
 
   public isLogLevelEnabled(level: LogLevel) {
-    return logLevels.indexOf(level) >= logLevels.indexOf(this.logLevel);
+    return logLevels.indexOf(level) >= logLevels.indexOf(this.config.logLevel);
   }
 
   public log(level: LogLevel, message: string, data: AnyObject) {
     if (this.isLogLevelEnabled(level)) {
-      process.stdout.write(stringifySafe(this.createEntry(level, message, data), null, 2) + os.EOL);
+      process.stdout.write(
+        stringifySafe(this.createEntry(level, message, data), null, this.config.jsonIndent) + os.EOL,
+      );
     }
   }
 
@@ -65,21 +75,20 @@ export class SimpleLogger {
 }
 
 export type ContextAwareLoggerConfig = {
-  logLevel?: LogLevel;
   memoryLimit?: number;
   flushTimeout?: number;
-};
+} & SimpleLoggerConfig;
 
 export class ContextAwareLogger extends SimpleLogger {
   private entries: MemSavvyQueue<{ id: number }>;
-  private config: Required<ContextAwareLoggerConfig>;
   private context: AnyObject = {};
+  protected config: Required<ContextAwareLoggerConfig>;
 
   constructor(config?: ContextAwareLoggerConfig) {
-    super(config?.logLevel);
+    super(config);
 
     this.config = {
-      logLevel: this.logLevel,
+      ...super.config,
       memoryLimit: parseInt(process.env.LOG_MEMORY_LIMIT_MB || "1"),
       flushTimeout: parseInt(process.env.LOG_FLUSH_TIMEOUT_S || "0"),
       ...config,
@@ -88,7 +97,7 @@ export class ContextAwareLogger extends SimpleLogger {
     this.entries = new MemSavvyQueue<{ id: number }>({
       memoryUsageLimitBytes: this.config.memoryLimit * 1024 * 1024,
       itemConsumer: async (item) => {
-        process.stdout.write(stringifySafe({ ...item, ...this.context }, null, 2) + os.EOL);
+        process.stdout.write(stringifySafe({ ...item, ...this.context }, null, this.config.jsonIndent) + os.EOL);
       },
     });
 
