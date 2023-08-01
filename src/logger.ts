@@ -7,11 +7,6 @@ type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal" | "off";
 
 const logLevels: LogLevel[] = ["trace", "debug", "info", "warn", "error", "fatal", "off"];
 
-const getDefaultLogLevel = () => {
-  const logLevelString = (process.env.LOG_LEVEL || "info").toLowerCase();
-  return logLevels.find((it) => it === logLevelString) || "info";
-};
-
 export type SimpleLoggerConfig = {
   logLevel?: LogLevel;
   jsonIndent?: number;
@@ -23,7 +18,7 @@ export class SimpleLogger {
   protected config: Required<SimpleLoggerConfig>;
 
   constructor(config?: SimpleLoggerConfig) {
-    this.config = { logLevel: getDefaultLogLevel(), jsonIndent: 0, ...config };
+    this.config = SimpleLogger.createConfig(config);
   }
 
   protected createEntry(level: LogLevel, message: string, data: AnyObject) {
@@ -73,6 +68,12 @@ export class SimpleLogger {
   public fatal(message: string, data: AnyObject = {}) {
     this.log("fatal", message, data);
   }
+
+  protected static createConfig(config?: SimpleLoggerConfig) {
+    const logLevelString = (process.env.LOG_LEVEL || "info").toLowerCase();
+    const defaultLogLevel = logLevels.find((it) => it === logLevelString) || "info";
+    return { logLevel: defaultLogLevel, jsonIndent: 0, ...config };
+  }
 }
 
 export type ContextAwareLoggerConfig = {
@@ -89,7 +90,7 @@ export class ContextAwareLogger extends SimpleLogger {
     super(config);
 
     this.config = {
-      ...super.config,
+      ...SimpleLogger.createConfig(config),
       memoryLimit: parseInt(process.env.LOG_MEMORY_LIMIT_MB || "1"),
       flushTimeout: parseInt(process.env.LOG_FLUSH_TIMEOUT_S || "0"),
       ...config,
@@ -98,7 +99,9 @@ export class ContextAwareLogger extends SimpleLogger {
     this.entries = new MemSavvyQueue<{ id: number }>({
       memoryUsageLimitBytes: this.config.memoryLimit * 1024 * 1024,
       itemConsumer: async (item) => {
-        process.stdout.write(stringifySafe({ ...item, ...this.context }, null, this.config.jsonIndent) + os.EOL);
+        process.stdout.write(
+          stringifySafe({ ...item, ...this.context }, null, this.config.jsonIndent) + os.EOL,
+        );
       },
     });
 
