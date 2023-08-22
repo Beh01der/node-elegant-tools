@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { getContext, withContext } from "./context";
 import { readJsonFile } from "./misc";
 
@@ -13,14 +14,17 @@ export const createHandler =
       logger.setContext({
         service: name,
         version,
+        invocationId: context?.awsRequestId || uuidv4(),
       });
 
       try {
         const result = await handler(event, context);
 
+        logger.patchContext({ result: "success" });
         logger.info("Successfully processed event", { result });
         return result;
       } catch (error: any) {
+        logger.patchContext({ result: "failure" });
         logger.error("Failed to process event", error);
         throw error;
       }
