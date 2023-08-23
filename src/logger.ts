@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import stringifySafe from "json-stringify-safe";
 import { MemSavvyQueue } from "memory-savvy-queue";
 import os from "node:os";
@@ -25,10 +26,11 @@ export class SimpleLogger {
     const time = Date.now();
     const timer = time - this.time;
     this.time = time;
+    const isoTime = dayjs(time).format();
     const heapUsed = `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`;
     const memoryAllocated = `${Math.round(process.memoryUsage().rss / 1024 / 1024 * 100) / 100} MB`;
 
-    return { id: this.entryCounter++, level, time, timer, heapUsed, memoryAllocated, message, ...data };
+    return { id: this.entryCounter++, level, time, isoTime, timer, heapUsed, memoryAllocated, message, ...data };
   }
 
   public isLogLevelEnabled(level: LogLevel) {
