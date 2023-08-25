@@ -11,12 +11,15 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal" | "off";
-
 const logLevels: LogLevel[] = ["trace", "debug", "info", "warn", "error", "fatal", "off"];
+
+type LogOutputStrategy = "INSTANT" | "INSTANT_AFTER_FLUSH" | "ALWAYS_CACHED";
+const logOutputStrategies: LogOutputStrategy[] = ["INSTANT", "INSTANT_AFTER_FLUSH", "ALWAYS_CACHED"];
 
 export type SimpleLoggerConfig = {
   logLevel?: LogLevel;
   jsonIndent?: number;
+  timezone?: string;
 };
 
 export class SimpleLogger {
@@ -32,7 +35,7 @@ export class SimpleLogger {
     const time = Date.now();
     const timer = time - this.time;
     this.time = time;
-    const isoTime = dayjs(time).tz(config.timezone).format();
+    const isoTime = dayjs(time).tz(this.config.timezone).format();
     const heapUsed = `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`;
     const memoryAllocated = `${Math.round(process.memoryUsage().rss / 1024 / 1024 * 100) / 100} MB`;
 
@@ -79,19 +82,21 @@ export class SimpleLogger {
 
   protected static createConfig(cfg?: SimpleLoggerConfig) {
     const defaultLogLevel = logLevels.find((it) => it === cfg?.logLevel) || "info";
-    return { logLevel: defaultLogLevel, jsonIndent: config.jsonIndent, ...cfg };
+    return { logLevel: defaultLogLevel, jsonIndent: config.jsonIndent, timezone: config.timezone, ...cfg };
   }
 }
 
 export type ContextAwareLoggerConfig = {
   memoryLimit?: number;
   flushTimeout?: number;
+  outputStrategy?: LogOutputStrategy;
 } & SimpleLoggerConfig;
 
 export class ContextAwareLogger extends SimpleLogger {
-  private entries: MemSavvyQueue<{ id: number }>;
+  private entries?: MemSavvyQueue<{ id: number }>;
   private context: AnyObject = {};
   protected config: Required<ContextAwareLoggerConfig>;
+  private instantOutput: boolean;
 
   constructor(cfg?: ContextAwareLoggerConfig) {
     super(cfg);
@@ -100,26 +105,41 @@ export class ContextAwareLogger extends SimpleLogger {
       ...SimpleLogger.createConfig(cfg),
       memoryLimit: config.memoryLimit,
       flushTimeout: config.flushTimeout,
+      outputStrategy: logOutputStrategies.indexOf(config.logOutputStrategy as LogOutputStrategy) > -1
+        ? config.logOutputStrategy as LogOutputStrategy
+        : "INSTANT_AFTER_FLUSH" as const,
       ...cfg,
     };
 
-    this.entries = new MemSavvyQueue<{ id: number }>({
-      memoryUsageLimitBytes: this.config.memoryLimit * 1024 * 1024,
-      itemConsumer: async (item) => {
-        process.stdout.write(
-          stringifySafe({ ...item, ...this.context }, null, this.config.jsonIndent) + os.EOL,
-        );
-      },
-    });
+    this.instantOutput = this.config.outputStrategy === "INSTANT";
 
-    if (this.config.flushTimeout < Number.MAX_SAFE_INTEGER) {
-      setTimeout(() => this.flush(), this.config.flushTimeout * 1000);
+    if (this.config.outputStrategy !== "INSTANT") {
+      this.entries = new MemSavvyQueue<{ id: number }>({
+        memoryUsageLimitBytes: this.config.memoryLimit * 1024 * 1024,
+        itemConsumer: async (item) => {
+          process.stdout.write(
+            stringifySafe({ ...item, ...this.context }, null, this.config.jsonIndent) + os.EOL,
+          );
+        },
+      });
+
+      if (this.config.flushTimeout < Number.MAX_SAFE_INTEGER) {
+        setTimeout(() => this.flush(), this.config.flushTimeout * 1000);
+      }
     }
   }
 
   public log(level: LogLevel, message: string, data: AnyObject) {
     if (this.isLogLevelEnabled(level)) {
-      this.entries.push(this.createEntry(level, message, data));
+      const item = this.createEntry(level, message, data);
+
+      if (this.instantOutput) {
+        process.stdout.write(
+          stringifySafe({ ...item, ...this.context }, null, this.config.jsonIndent) + os.EOL,
+        );
+      } else {
+        this.entries?.push(item);
+      }
     }
   }
 
@@ -132,6 +152,12 @@ export class ContextAwareLogger extends SimpleLogger {
   }
 
   public flush() {
-    this.entries.consumeAll();
+    if (!this.instantOutput) {
+      this.entries?.consumeAll();
+    }
+
+    if (this.config.outputStrategy === "INSTANT_AFTER_FLUSH") {
+      this.instantOutput = true;
+    }
   }
 }
