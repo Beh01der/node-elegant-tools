@@ -1,8 +1,14 @@
 import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import stringifySafe from "json-stringify-safe";
 import { MemSavvyQueue } from "memory-savvy-queue";
 import os from "node:os";
+import { config } from "./config";
 import { AnyObject, onlyDefinedFields } from "./misc";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal" | "off";
 
@@ -18,15 +24,15 @@ export class SimpleLogger {
   private entryCounter = 0;
   protected config: Required<SimpleLoggerConfig>;
 
-  constructor(config?: SimpleLoggerConfig) {
-    this.config = SimpleLogger.createConfig(config);
+  constructor(cfg?: SimpleLoggerConfig) {
+    this.config = SimpleLogger.createConfig(cfg);
   }
 
   protected createEntry(level: LogLevel, message: string, data: AnyObject) {
     const time = Date.now();
     const timer = time - this.time;
     this.time = time;
-    const isoTime = dayjs(time).format();
+    const isoTime = dayjs(time).tz(config.timezone).format();
     const heapUsed = `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`;
     const memoryAllocated = `${Math.round(process.memoryUsage().rss / 1024 / 1024 * 100) / 100} MB`;
 
@@ -71,10 +77,9 @@ export class SimpleLogger {
     this.log("fatal", message, data);
   }
 
-  protected static createConfig(config?: SimpleLoggerConfig) {
-    const logLevelString = (process.env.LOG_LEVEL || "info").toLowerCase();
-    const defaultLogLevel = logLevels.find((it) => it === logLevelString) || "info";
-    return { logLevel: defaultLogLevel, jsonIndent: 0, ...config };
+  protected static createConfig(cfg?: SimpleLoggerConfig) {
+    const defaultLogLevel = logLevels.find((it) => it === cfg?.logLevel) || "info";
+    return { logLevel: defaultLogLevel, jsonIndent: config.jsonIndent, ...cfg };
   }
 }
 
@@ -88,14 +93,14 @@ export class ContextAwareLogger extends SimpleLogger {
   private context: AnyObject = {};
   protected config: Required<ContextAwareLoggerConfig>;
 
-  constructor(config?: ContextAwareLoggerConfig) {
-    super(config);
+  constructor(cfg?: ContextAwareLoggerConfig) {
+    super(cfg);
 
     this.config = {
-      ...SimpleLogger.createConfig(config),
-      memoryLimit: parseInt(process.env.LOG_MEMORY_LIMIT_MB || "1"),
-      flushTimeout: parseInt(process.env.LOG_FLUSH_TIMEOUT_S || "0"),
-      ...config,
+      ...SimpleLogger.createConfig(cfg),
+      memoryLimit: config.memoryLimit,
+      flushTimeout: config.flushTimeout,
+      ...cfg,
     };
 
     this.entries = new MemSavvyQueue<{ id: number }>({
@@ -107,7 +112,7 @@ export class ContextAwareLogger extends SimpleLogger {
       },
     });
 
-    if (this.config.flushTimeout > 0) {
+    if (this.config.flushTimeout < Number.MAX_SAFE_INTEGER) {
       setTimeout(() => this.flush(), this.config.flushTimeout * 1000);
     }
   }
