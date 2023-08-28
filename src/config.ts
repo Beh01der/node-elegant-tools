@@ -5,4 +5,5 @@ export const config = {
   flushTimeout: parseInt(process.env.LOG_FLUSH_TIMEOUT_S || "0") || Number.MAX_SAFE_INTEGER,
   jsonIndent: parseInt(process.env.LOG_JSON_INDENT || "0"),
   logOutputStrategy: process.env.LOG_OUTPUT_STRATEGY || "INSTANT_AFTER_FLUSH",
+  debugLibrary: process.env.LOG_DEBUG_LIBRARY === "true",
 };

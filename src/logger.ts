@@ -21,6 +21,7 @@ export type SimpleLoggerConfig = {
   logLevel?: LogLevel;
   jsonIndent?: number;
   timezone?: string;
+  debugLibrary?: boolean;
 };
 
 export class SimpleLogger {
@@ -30,6 +31,9 @@ export class SimpleLogger {
 
   constructor(cfg?: SimpleLoggerConfig) {
     this.config = SimpleLogger.createConfig(cfg);
+    if (this.config.debugLibrary) {
+      this.debug("Using SimpleLogger config", this.config);
+    }
   }
 
   protected createEntry(level: LogLevel, message: string, data: AnyObject) {
@@ -83,7 +87,13 @@ export class SimpleLogger {
 
   protected static createConfig(cfg?: SimpleLoggerConfig) {
     const defaultLogLevel = logLevels.find((it) => it === cfg?.logLevel) || "info";
-    return { logLevel: defaultLogLevel, jsonIndent: config.jsonIndent, timezone: config.timezone, ...cfg };
+    return {
+      logLevel: defaultLogLevel,
+      jsonIndent: config.jsonIndent,
+      timezone: config.timezone,
+      debugLibrary: config.debugLibrary,
+      ...cfg,
+    };
   }
 }
 
@@ -128,6 +138,10 @@ export class ContextAwareLogger extends SimpleLogger {
         setTimeout(async () => this.flush(), this.config.flushTimeout * 1000);
       }
     }
+
+    if (this.config.debugLibrary) {
+      this.debug("Using ContextAwareLogger config", this.config);
+    }
   }
 
   public log(level: LogLevel, message: string, data: AnyObject) {
@@ -154,6 +168,10 @@ export class ContextAwareLogger extends SimpleLogger {
 
   public async flush() {
     if (!this.instantOutput) {
+      if (this.config.debugLibrary) {
+        this.debug("ContextAwareLogger processing cached log entries", { count: this.entries?.getCount() });
+      }
+
       await this.entries?.consumeAll();
     }
 
