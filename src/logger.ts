@@ -4,17 +4,18 @@ import utc from "dayjs/plugin/utc";
 import stringifySafe from "json-stringify-safe";
 import { MemSavvyQueue } from "memory-savvy-queue";
 import os from "node:os";
+import process from "node:process";
 import { config } from "./config";
 import { AnyObject, onlyDefinedFields } from "./misc";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal" | "off";
-const logLevels: LogLevel[] = ["trace", "debug", "info", "warn", "error", "fatal", "off"];
+export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal" | "off";
+export const logLevels: LogLevel[] = ["trace", "debug", "info", "warn", "error", "fatal", "off"];
 
-type LogOutputStrategy = "INSTANT" | "INSTANT_AFTER_FLUSH" | "ALWAYS_CACHED";
-const logOutputStrategies: LogOutputStrategy[] = ["INSTANT", "INSTANT_AFTER_FLUSH", "ALWAYS_CACHED"];
+export type LogOutputStrategy = "INSTANT" | "INSTANT_AFTER_FLUSH" | "ALWAYS_CACHED";
+export const logOutputStrategies: LogOutputStrategy[] = ["INSTANT", "INSTANT_AFTER_FLUSH", "ALWAYS_CACHED"];
 
 export type SimpleLoggerConfig = {
   logLevel?: LogLevel;
@@ -39,7 +40,7 @@ export class SimpleLogger {
     const heapUsed = `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`;
     const memoryAllocated = `${Math.round(process.memoryUsage().rss / 1024 / 1024 * 100) / 100} MB`;
 
-    return { id: this.entryCounter++, level, time, isoTime, timer, heapUsed, memoryAllocated, message, ...data };
+    return { pos: this.entryCounter++, level, time, isoTime, timer, heapUsed, memoryAllocated, message, ...data };
   }
 
   public isLogLevelEnabled(level: LogLevel) {
@@ -93,7 +94,7 @@ export type ContextAwareLoggerConfig = {
 } & SimpleLoggerConfig;
 
 export class ContextAwareLogger extends SimpleLogger {
-  private entries?: MemSavvyQueue<{ id: number }>;
+  private entries?: MemSavvyQueue<{ pos: number }>;
   private context: AnyObject = {};
   protected config: Required<ContextAwareLoggerConfig>;
   private instantOutput: boolean;
@@ -114,7 +115,7 @@ export class ContextAwareLogger extends SimpleLogger {
     this.instantOutput = this.config.outputStrategy === "INSTANT";
 
     if (this.config.outputStrategy !== "INSTANT") {
-      this.entries = new MemSavvyQueue<{ id: number }>({
+      this.entries = new MemSavvyQueue<{ pos: number }>({
         memoryUsageLimitBytes: this.config.memoryLimit * 1024 * 1024,
         itemConsumer: async (item) => {
           process.stdout.write(
@@ -124,7 +125,7 @@ export class ContextAwareLogger extends SimpleLogger {
       });
 
       if (this.config.flushTimeout < Number.MAX_SAFE_INTEGER) {
-        setTimeout(() => this.flush(), this.config.flushTimeout * 1000);
+        setTimeout(async () => this.flush(), this.config.flushTimeout * 1000);
       }
     }
   }
@@ -151,9 +152,9 @@ export class ContextAwareLogger extends SimpleLogger {
     this.context = { ...this.context, ...onlyDefinedFields(context) };
   }
 
-  public flush() {
+  public async flush() {
     if (!this.instantOutput) {
-      this.entries?.consumeAll();
+      await this.entries?.consumeAll();
     }
 
     if (this.config.outputStrategy === "INSTANT_AFTER_FLUSH") {
