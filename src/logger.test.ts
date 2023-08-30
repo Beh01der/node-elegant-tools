@@ -137,7 +137,7 @@ describe("ContextAwareLogger", () => {
   });
 
   it("should output entries immediatelly for INSTANT output strategy", () => {
-    const logger = new ContextAwareLogger({ logLevel: "info", outputStrategy: "INSTANT" });
+    const logger = new ContextAwareLogger({ logLevel: "info", outputStrategy: "instant" });
     logger.info("Log something");
     expect(process.stdout.write).toHaveBeenCalledTimes(1);
 
@@ -146,7 +146,7 @@ describe("ContextAwareLogger", () => {
   });
 
   it("should switch to immediate output after flush() is called for INSTANT_AFTER_FLUSH output strategy", async () => {
-    const logger = new ContextAwareLogger({ logLevel: "info", outputStrategy: "INSTANT_AFTER_FLUSH" });
+    const logger = new ContextAwareLogger({ logLevel: "info", outputStrategy: "instant_after_flush" });
     logger.info("Log something");
     expect(process.stdout.write).toHaveBeenCalledTimes(0);
     await logger.flush();
@@ -157,7 +157,7 @@ describe("ContextAwareLogger", () => {
   });
 
   it("should always require flush() for ALWAYS_CASHED output strategy", async () => {
-    const logger = new ContextAwareLogger({ logLevel: "info", outputStrategy: "ALWAYS_CACHED" });
+    const logger = new ContextAwareLogger({ logLevel: "info", outputStrategy: "always_cached" });
     logger.info("Log something");
     expect(process.stdout.write).toHaveBeenCalledTimes(0);
     await logger.flush();

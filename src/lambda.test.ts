@@ -33,7 +33,7 @@ beforeEach(() => {
 
 describe("createHandler", () => {
   it("calls wrapped function, logs input values and success status", async () => {
-    const handler = createHandler(async (event, context) => (`${event}+${context}`));
+    const handler = createHandler(async (event, context) => (`${event}+${context}`), { logLevel: "info" });
     const result = await handler("event", "context");
 
     expect(result).toEqual("event+context");
@@ -74,7 +74,7 @@ describe("createHandler", () => {
   it("should handle / log error", async () => {
     const handler = createHandler(async () => {
       throw new Error("Oh no!");
-    });
+    }, { logLevel: "info" });
 
     await expect(handler("event", "context")).rejects.toThrow("Oh no!");
     expect((process.stdout.write as any).mock.calls.map((it: any) => {
@@ -130,7 +130,7 @@ describe("createHandler", () => {
       await setTimeout(lambdaTimeout);
       logger.info("Extra log entry");
       return (`${event}+${context}`);
-    });
+    }, { logLevel: "info" });
 
     // we don't wait for handler to finish
     handler("event", { getRemainingTimeInMillis: () => lambdaTimeout });
@@ -142,5 +142,42 @@ describe("createHandler", () => {
 
     // lambda is about to time out, flush() should be called
     expect(process.stdout.write).toHaveBeenCalledTimes(3);
+  });
+
+  it("calls wrapped function, no event, no context", async () => {
+    const handler = createHandler(async (event, context) => (`${event}+${context}`), { logLevel: "info" });
+    const result = await handler();
+
+    expect(result).toEqual("undefined+undefined");
+    expect((process.stdout.write as any).mock.calls.map((it: any) => JSON.parse(it[0]))).toEqual([
+      {
+        pos: 0,
+        level: "info",
+        time: 1693094400000,
+        isoTime: "2023-08-27T10:00:00+10:00",
+        timer: 0,
+        heapUsed: "13.18 MB",
+        memoryAllocated: "27.5 MB",
+        message: "Running test (1.0.0)",
+        service: "test",
+        version: "1.0.0",
+        invocationId: "96dd45f3-f261-4ec6-9c29-1d21d7300000",
+        result: "success",
+      },
+      {
+        pos: 1,
+        level: "info",
+        time: 1693094400000,
+        isoTime: "2023-08-27T10:00:00+10:00",
+        timer: 0,
+        heapUsed: "13.18 MB",
+        memoryAllocated: "27.5 MB",
+        message: "Successfully processed event",
+        result: "success",
+        service: "test",
+        version: "1.0.0",
+        invocationId: "96dd45f3-f261-4ec6-9c29-1d21d7300000",
+      },
+    ]);
   });
 });

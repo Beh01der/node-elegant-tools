@@ -5,24 +5,11 @@ import stringifySafe from "json-stringify-safe";
 import { MemSavvyQueue } from "memory-savvy-queue";
 import os from "node:os";
 import process from "node:process";
-import { config } from "./config";
+import { ContextAwareLoggerConfig, createConfig, LOG_LEVELS, LogLevel, SimpleLoggerConfig } from "./config";
 import { AnyObject, onlyDefinedFields } from "./misc";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-
-export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal" | "off";
-export const logLevels: LogLevel[] = ["trace", "debug", "info", "warn", "error", "fatal", "off"];
-
-export type LogOutputStrategy = "INSTANT" | "INSTANT_AFTER_FLUSH" | "ALWAYS_CACHED";
-export const logOutputStrategies: LogOutputStrategy[] = ["INSTANT", "INSTANT_AFTER_FLUSH", "ALWAYS_CACHED"];
-
-export type SimpleLoggerConfig = {
-  logLevel?: LogLevel;
-  jsonIndent?: number;
-  timezone?: string;
-  debugLibrary?: boolean;
-};
 
 export class SimpleLogger {
   private time = Date.now();
@@ -30,9 +17,10 @@ export class SimpleLogger {
   protected config: Required<SimpleLoggerConfig>;
 
   constructor(cfg?: SimpleLoggerConfig) {
-    this.config = SimpleLogger.createConfig(cfg);
+    this.config = createConfig(cfg);
     if (this.config.debugLibrary) {
       this.debug("Using SimpleLogger config", this.config);
+      console.log("Using SimpleLogger config", this.config);
     }
   }
 
@@ -48,7 +36,7 @@ export class SimpleLogger {
   }
 
   public isLogLevelEnabled(level: LogLevel) {
-    return logLevels.indexOf(level) >= logLevels.indexOf(this.config.logLevel);
+    return LOG_LEVELS.indexOf(level) >= LOG_LEVELS.indexOf(this.config.logLevel);
   }
 
   public log(level: LogLevel, message: string, data: AnyObject) {
@@ -84,24 +72,7 @@ export class SimpleLogger {
   public fatal(message: string, data: AnyObject = {}) {
     this.log("fatal", message, data);
   }
-
-  protected static createConfig(cfg?: SimpleLoggerConfig) {
-    const defaultLogLevel = logLevels.find((it) => it === cfg?.logLevel) || "info";
-    return {
-      logLevel: defaultLogLevel,
-      jsonIndent: config.jsonIndent,
-      timezone: config.timezone,
-      debugLibrary: config.debugLibrary,
-      ...cfg,
-    };
-  }
 }
-
-export type ContextAwareLoggerConfig = {
-  memoryLimit?: number;
-  flushTimeout?: number;
-  outputStrategy?: LogOutputStrategy;
-} & SimpleLoggerConfig;
 
 export class ContextAwareLogger extends SimpleLogger {
   private entries?: MemSavvyQueue<{ pos: number }>;
@@ -112,19 +83,11 @@ export class ContextAwareLogger extends SimpleLogger {
   constructor(cfg?: ContextAwareLoggerConfig) {
     super(cfg);
 
-    this.config = {
-      ...SimpleLogger.createConfig(cfg),
-      memoryLimit: config.memoryLimit,
-      flushTimeout: config.flushTimeout,
-      outputStrategy: logOutputStrategies.indexOf(config.logOutputStrategy as LogOutputStrategy) > -1
-        ? config.logOutputStrategy as LogOutputStrategy
-        : "INSTANT_AFTER_FLUSH" as const,
-      ...cfg,
-    };
+    this.config = createConfig(cfg);
 
-    this.instantOutput = this.config.outputStrategy === "INSTANT";
+    this.instantOutput = this.config.outputStrategy === "instant";
 
-    if (this.config.outputStrategy !== "INSTANT") {
+    if (this.config.outputStrategy !== "instant") {
       this.entries = new MemSavvyQueue<{ pos: number }>({
         memoryUsageLimitBytes: this.config.memoryLimit * 1024 * 1024,
         itemConsumer: async (item) => {
@@ -141,6 +104,7 @@ export class ContextAwareLogger extends SimpleLogger {
 
     if (this.config.debugLibrary) {
       this.debug("Using ContextAwareLogger config", this.config);
+      console.log("Using ContextAwareLogger config", this.config);
     }
   }
 
@@ -175,7 +139,7 @@ export class ContextAwareLogger extends SimpleLogger {
       await this.entries?.consumeAll();
     }
 
-    if (this.config.outputStrategy === "INSTANT_AFTER_FLUSH") {
+    if (this.config.outputStrategy === "instant_after_flush") {
       this.instantOutput = true;
     }
   }
