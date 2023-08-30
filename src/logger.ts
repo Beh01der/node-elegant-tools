@@ -20,7 +20,6 @@ export class SimpleLogger {
     this.config = createConfig(cfg);
     if (this.config.debugLibrary) {
       this.debug("Using SimpleLogger config", this.config);
-      console.log("Using SimpleLogger config", this.config);
     }
   }
 
@@ -104,7 +103,6 @@ export class ContextAwareLogger extends SimpleLogger {
 
     if (this.config.debugLibrary) {
       this.debug("Using ContextAwareLogger config", this.config);
-      console.log("Using ContextAwareLogger config", this.config);
     }
   }
 
