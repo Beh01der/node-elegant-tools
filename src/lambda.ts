@@ -9,7 +9,7 @@ const { name, version } = readJsonFile("package.json") || {};
 export const createHandler =
   (handler: (event?: any, context?: any) => Promise<any>) => async (event?: any, context?: any) => {
     let flushTimeout = config.flushTimeout;
-    if (context.getRemainingTimeInMillis) {
+    if (context?.getRemainingTimeInMillis) {
       // for AWS Lambda we use min of configured timeout and remaining time but not less than 1 second
       flushTimeout = Math.max(1, Math.min(flushTimeout, Math.floor(context.getRemainingTimeInMillis() / 1000) - 1));
     }
